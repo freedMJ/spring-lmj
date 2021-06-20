@@ -2,9 +2,11 @@ package com.spring;
 
 
 import java.io.File;
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.net.URL;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class MySpringApplicationContext {
@@ -25,7 +27,7 @@ public class MySpringApplicationContext {
             BeanDefinition beanDefinition = beanDefinitionEntry.getValue();
             //假如是单例的
             if("singleton".equals(beanDefinition.getScope())){
-                Object bean = createBean(beanDefinition);
+                Object bean = createBean(beanName,beanDefinition);
                 singletonObjects.put(beanName,bean);
             }
         }
@@ -47,7 +49,6 @@ public class MySpringApplicationContext {
         ClassLoader classLoader = MySpringApplicationContext.class.getClassLoader();
         URL resource = classLoader.getResource(componentScanUrl.replace(".","/"));
         File file = new File(resource.getFile());
-        System.out.println("resource.getFile()================="+resource.getFile());
         if(file.isDirectory()){
             File[] files = file.listFiles();
             for (File f : files) {
@@ -66,14 +67,10 @@ public class MySpringApplicationContext {
 
                             BeanDefinition beanDefinition = new BeanDefinition();
                             beanDefinition.setClazz(aClass);
-                            //判断是否有作用域    从单例池中获取
+                            //判断是否有作用域从单例池中获取
                             if(aClass.isAnnotationPresent(Scope.class)){
                                 Scope scope = aClass.getDeclaredAnnotation(Scope.class);
-                                if("property".equals(scope.value())){
-                                    beanDefinition.setScope("property");
-                                }else{
-                                    beanDefinition.setScope("singleton");
-                                }
+                                beanDefinition.setScope(scope.value());
                             }else{
                                 //默认是单例
                                 beanDefinition.setScope("singleton");
@@ -91,11 +88,24 @@ public class MySpringApplicationContext {
         }
     }
 
-    public Object createBean(BeanDefinition beanDefinition){
+    public Object createBean(String beanName,BeanDefinition beanDefinition){
         Class clazz = beanDefinition.getClazz();
         try {
-            Object o = clazz.getDeclaredConstructor().newInstance();
-            return o;
+            Object instance = clazz.getDeclaredConstructor().newInstance();
+            //得到字段
+            for (Field field : clazz.getDeclaredFields()) {
+                //判断字段上是否有Autowired注解
+                if(field.isAnnotationPresent(Autowried.class)){
+                    Object bean = getBean(field.getName());
+                    field.setAccessible(true);
+                    field.set(instance,bean);
+                }
+                //判断是否需要设置beanName
+                if(instance instanceof BeanNameAware){
+                    ((BeanNameAware) instance).setBeanName(beanName);
+                }
+            }
+            return instance;
         } catch (InstantiationException e) {
             e.printStackTrace();
         } catch (IllegalAccessException e) {
@@ -107,18 +117,27 @@ public class MySpringApplicationContext {
         }
         return null;
     }
+
     public Object getBean(String beanName){
+
         if(beanDefinitionMap.containsKey(beanName)){
             BeanDefinition beanDefinition = beanDefinitionMap.get(beanName);
             if("singleton".equals(beanDefinition.getScope())){
-                return singletonObjects.get(beanName);
+                Object o = singletonObjects.get(beanName);
+                if (Objects.isNull(o)) {
+                    return createBean(beanName,beanDefinition);
+                }
+                return o;
             }else{
-                return createBean(beanDefinition);
+                Object bean = createBean(beanName,beanDefinition);
+                return bean;
             }
-
         }else{
             throw new NullPointerException();
         }
+
+
+
 
     }
 
