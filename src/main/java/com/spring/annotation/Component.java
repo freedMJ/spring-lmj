@@ -1,4 +1,4 @@
-package com.spring;
+package com.spring.annotation;
 
 
 import java.lang.annotation.ElementType;
@@ -8,7 +8,6 @@ import java.lang.annotation.Target;
 
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
-public @interface ComponentScan {
-
-     public String value();
+public @interface Component {
+    public String value();
 }

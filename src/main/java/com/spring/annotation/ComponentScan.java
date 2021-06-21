@@ -1,4 +1,4 @@
-package com.spring;
+package com.spring.annotation;
 
 
 import java.lang.annotation.ElementType;
@@ -7,7 +7,8 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 @Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.FIELD,ElementType.METHOD})
-public @interface Autowried {
-    public String value();
+@Target(ElementType.TYPE)
+public @interface ComponentScan {
+
+     public String value();
 }

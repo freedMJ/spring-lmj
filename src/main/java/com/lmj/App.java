@@ -17,16 +17,6 @@ public class App
         MySpringApplicationContext context = new MySpringApplicationContext(AppConfig.class);
 
         UserServiceImpl userServiceImpl = (UserServiceImpl)context.getBean("userServiceImpl");
-        UserServiceImpl userServiceImp2 = (UserServiceImpl)context.getBean("userServiceImpl");
-        UserServiceImpl userServiceImp3 = (UserServiceImpl)context.getBean("userServiceImpl");
-        System.out.println("userServiceImpl=========="+userServiceImpl);
-        System.out.println("userServiceImp2=========="+userServiceImp2);
-        System.out.println("userServiceImp3=========="+userServiceImp3);
-        System.out.println("userServiceImp3====beanname=========="+userServiceImp3.getBeanName());
-
-        userServiceImpl.test();
-        userServiceImp2.test();
-        userServiceImp3.test();
 
 
     }

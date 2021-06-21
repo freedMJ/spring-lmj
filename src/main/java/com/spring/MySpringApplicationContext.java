@@ -1,10 +1,17 @@
 package com.spring;
 
 
+import com.spring.annotation.Autowried;
+import com.spring.annotation.Component;
+import com.spring.annotation.ComponentScan;
+import com.spring.interfaces.InitializingBean;
+
 import java.io.File;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -15,7 +22,7 @@ public class MySpringApplicationContext {
 
     private  ConcurrentHashMap<String,Object> singletonObjects  = new ConcurrentHashMap();
     private  ConcurrentHashMap<String,BeanDefinition> beanDefinitionMap = new ConcurrentHashMap();
-
+    private List<BeanPostProcessor> beanPostProcessorList =new ArrayList<>();
     public MySpringApplicationContext(Class configClass) {
         this.configClass = configClass;
 
@@ -62,7 +69,13 @@ public class MySpringApplicationContext {
                         Class<?> aClass = classLoader.loadClass(className);
                         //判断这个类是否有component
                         if(aClass.isAnnotationPresent(Component.class)){
+                            //判断这个类是否实现了扩展类接口
+                            if(BeanPostProcessor.class.isAssignableFrom(aClass)){
+                                BeanPostProcessor instance =(BeanPostProcessor) aClass.getDeclaredConstructor().newInstance();
+                                beanPostProcessorList.add(instance);
+                            }
                             Component component = aClass.getDeclaredAnnotation(Component.class);
+                            //String beanName = aClass.getName();
                             String beanName = component.value();
 
                             BeanDefinition beanDefinition = new BeanDefinition();
@@ -82,6 +95,14 @@ public class MySpringApplicationContext {
 
                     } catch (ClassNotFoundException e) {
                         e.printStackTrace();
+                    } catch (InvocationTargetException e) {
+                        e.printStackTrace();
+                    } catch (InstantiationException e) {
+                        e.printStackTrace();
+                    } catch (IllegalAccessException e) {
+                        e.printStackTrace();
+                    } catch (NoSuchMethodException e) {
+                        e.printStackTrace();
                     }
                 }
             }
@@ -96,15 +117,28 @@ public class MySpringApplicationContext {
             for (Field field : clazz.getDeclaredFields()) {
                 //判断字段上是否有Autowired注解
                 if(field.isAnnotationPresent(Autowried.class)){
-                    Object bean = getBean(field.getName());
+                    String name = field.getName();
+                    Object bean = getBean(name);
                     field.setAccessible(true);
                     field.set(instance,bean);
                 }
-                //判断是否需要设置beanName
-                if(instance instanceof BeanNameAware){
-                    ((BeanNameAware) instance).setBeanName(beanName);
-                }
+
             }
+            //判断是否需要设置beanName
+            if(instance instanceof BeanNameAware){
+                ((BeanNameAware) instance).setBeanName(beanName);
+            }
+            for (BeanPostProcessor beanPostProcessor : beanPostProcessorList) {
+                beanPostProcessor.postProcessBeforeInitialization(instance,beanName);
+            }
+
+            if(instance instanceof InitializingBean){
+                ((InitializingBean)instance).afterPropertiesSet();
+            }
+            for (BeanPostProcessor beanPostProcessor : beanPostProcessorList) {
+                beanPostProcessor.postProcessAfterInitialization(instance,beanName);
+            }
+
             return instance;
         } catch (InstantiationException e) {
             e.printStackTrace();
@@ -113,6 +147,8 @@ public class MySpringApplicationContext {
         } catch (InvocationTargetException e) {
             e.printStackTrace();
         } catch (NoSuchMethodException e) {
+            e.printStackTrace();
+        } catch (Exception e) {
             e.printStackTrace();
         }
         return null;
